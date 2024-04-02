@@ -1,0 +1,210 @@
+import React, { useState, useEffect } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import commercelogo from '../assets/commercelogo.png';
+import { Nav } from '../components/Nav';
+import '../Css/Table.css';
+import axios from 'axios';
+
+
+export const Delete = () => {
+    const [users, setUsers] = useState([]);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [editMode, setEditMode] = useState(false);
+    const [editUser, setEditUser] = useState(null); // Separate state for editing user
+    const [newUser, setNewUser] = useState({
+        userId: "",
+        userPassword: "",
+        userRole: "",
+        createdAt: null,
+        createdBy: "",
+        modifiedAt: null,
+        modifiedBy: ""
+    });
+
+
+    useEffect(() => {
+        loadUsers();
+    }, []);
+
+
+    const loadUsers = async () => {
+        try {
+            const response = await axios.get("http://localhost:8080/users");
+            const modifiedData = response.data.map(user => ({
+                userUid: user.userUid,
+                userId: user.userId,
+                userPassword: user.userPassword,
+                userRole: user.userRole,
+                createdAt: user.createdAt,
+                createdBy: user.createdBy,
+                modifiedAt: user.modifiedAt,
+                modifiedBy: user.modifiedBy
+            }));
+            setUsers(modifiedData);
+        } catch (error) {
+            console.error('Error loading users:', error);
+        }
+    };
+
+
+    const handleUserClick = (user) => {
+        setSelectedUser(user);
+        setEditMode(false); // Exit edit mode when selecting a different user
+        setNewUser({ // Reset newUser state when selecting a different user
+            userId: "",
+            userPassword: "",
+            userRole: "",
+            createdAt: null,
+            createdBy: "",
+            modifiedAt: null,
+            modifiedBy: ""
+        });
+    };
+
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setNewUser(prevUser => ({
+            ...prevUser,
+            [name]: value
+        }));
+    };
+
+
+    const handleDateChange = (date, field) => {
+        setNewUser(prevUser => ({
+            ...prevUser,
+            [field]: date
+        }));
+    };
+
+
+    const handleAddUser = async () => {
+        try {
+            console.log("New User Data:", newUser);
+            await axios.post("http://localhost:8080/user", newUser);
+            loadUsers();
+            setNewUser({ // Reset newUser state after adding a new user
+                userId: "",
+                userPassword: "",
+                userRole: "",
+                createdAt: null,
+                createdBy: "",
+                modifiedAt: null,
+                modifiedBy: ""
+            });
+        } catch (error) {
+            console.error('Error adding user:', error);
+        }
+    };
+
+
+    const handleDeleteUser = async (userUid) => {
+        try {
+            console.log("User deleted successfully:", userUid);
+            await axios.delete(`http://localhost:8080/user/${userUid}`);
+            loadUsers();
+        } catch (error) {
+            console.error('Error deleting user:', error);
+        }
+    };
+
+
+    const handleEditUser = (user) => {
+        setEditMode(true);
+        setEditUser(user); // Set the user to edit
+        setNewUser({ // Set the newUser state to the user being edited
+            userId: user.userId,
+            userPassword: user.userPassword,
+            userRole: user.userRole,
+            createdAt: user.createdAt,
+            createdBy: user.createdBy,
+            modifiedAt: user.modifiedAt,
+            modifiedBy: user.modifiedBy
+        });
+    };
+
+    const handleSaveEdit = async () => {
+        try {
+            console.log("Updated User Data:", editUser);
+            await axios.put(`http://localhost:8080/user/${editUser.userUid}`, editUser); // Updated endpoint to use userUid
+            loadUsers();
+            setEditMode(false);
+            setEditUser(null); // Reset editUser state
+            setNewUser({ // Reset newUser state after saving edit
+                userId: "",
+                userPassword: "",
+                userRole: "",
+                createdAt: null,
+                createdBy: "",
+                modifiedAt: null,
+                modifiedBy: ""
+            });
+        } catch (error) {
+            console.error('Error updating user:', error);
+        }
+    };
+
+
+    return (
+        <div className="delete-page">
+            <Nav />
+            <div className="add-user-form">
+                <h2>{editMode ? "Edit User" : "Add New User"}</h2>
+                <input type="text" name="userId" value={newUser.userId} onChange={handleInputChange} placeholder="User ID" />
+                <input type="text" name="userPassword" value={newUser.userPassword} onChange={handleInputChange} placeholder="Password" />
+                <select name="userRole" value={newUser.userRole} onChange={handleInputChange}>
+                    <option value="">Select User Role</option>
+                    <option value="User">User</option>
+                    <option value="Admin">Admin</option>
+                </select>
+                <DatePicker selected={newUser.createdAt} onChange={(date) => handleDateChange(date, "createdAt")} placeholderText="Created At" />
+                <input type="text" name="createdBy" value={newUser.createdBy} onChange={handleInputChange} placeholder="Created By" />
+                <DatePicker selected={newUser.modifiedAt} onChange={(date) => handleDateChange(date, "modifiedAt")} placeholderText="Modified At" />
+                <input type="text" name="modifiedBy" value={newUser.modifiedBy} onChange={handleInputChange} placeholder="Modified By" />
+                <button onClick={editMode ? handleSaveEdit : handleAddUser}>{editMode ? "Save" : "Add User"}</button>
+            </div>
+            <header className="App-header">
+                <h1>User Management Page</h1>
+                <div className="users-table">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>User ID</th>
+                            <th>Password</th>
+                            <th>User Role</th>
+                            <th>Created At</th>
+                            <th>Created By</th>
+                            <th>Modified At</th>
+                            <th>Modified By</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {users.map((user, index) => (
+                            <tr key={index} className={user === selectedUser ? "selected" : ""} onClick={() => handleUserClick(user)}>
+                                <td>{index + 1}</td>
+                                <td>{user.userId}</td>
+                                <td>{user.userPassword}</td>
+                                <td>{user.userRole}</td>
+                                <td>{user.createdAt}</td>
+                                <td>{user.createdBy}</td>
+                                <td>{user.modifiedAt}</td>
+                                <td>{user.modifiedBy}</td>
+                                <td>
+                                    <button onClick={() => handleEditUser(user)}>Edit</button>
+                                    <button onClick={() => handleDeleteUser(user.userUid)}>Delete</button>
+                                </td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                </div>
+            </header>
+        </div>
+    );
+};
+
+export default Delete;
